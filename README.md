@@ -287,9 +287,6 @@ Contributions are welcome! Please follow these steps:
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-## 📝 License
-
-This project is open source and available under the [ISC License](LICENSE).
 
 ## 👨‍💻 Author
 
@@ -297,17 +294,6 @@ This project is open source and available under the [ISC License](LICENSE).
 
 - GitHub: [@laddasiddharth](https://github.com/laddasiddharth)
 
-## 🙏 Acknowledgments
-
-- React team for the amazing library
-- TailwindCSS for the utility-first CSS framework
-- Stripe for payment processing
-- Cloudinary for image management
-- MongoDB for the database solution
-
-## 📧 Support
-
-For support, email your-email@example.com or open an issue in the GitHub repository.
 
 ---
 
