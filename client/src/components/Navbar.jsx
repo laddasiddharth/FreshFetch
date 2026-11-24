@@ -7,7 +7,7 @@ import toast from 'react-hot-toast'
 const Navbar = () => {
     const [open, setOpen] = React.useState(false)
     const {user, setUser, setShowUserLogin, navigate, 
-        setSearchQuery, searchQuery, getCartCount, axios} = useAppContext();
+        setSearchQuery, searchQuery, getCartCount, axios, setCartItems} = useAppContext();
 
     const logout = async ()=>{
         try {
@@ -16,6 +16,7 @@ const Navbar = () => {
             if (data.success){
                 toast.success(data.message)
                 setUser(null);
+                setCartItems({});
                 navigate('/')
             }
             else{
@@ -30,6 +31,7 @@ const Navbar = () => {
         if (searchQuery.length > 0){
             navigate("/products")
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchQuery])
 
   return (
@@ -63,7 +65,7 @@ const Navbar = () => {
                         <img src={assets.profile_icon} className='w-10' alt="" />
                         <ul className='hidden group-hover:block absolute top-10 right-0 bg-white shadow
                         border border-gray-200 py-2.5 w-30 rounded-md text-sm z-40'>
-                            <li onClick={()=>navigate("my-orders")} className='p-1.5 pl-3 hover:bg-primary/10 cursor-pointer'>My Orders</li>
+                            <li onClick={()=>navigate("/my-orders")} className='p-1.5 pl-3 hover:bg-primary/10 cursor-pointer'>My Orders</li>
                             <li onClick={logout} className='p-1.5 pl-3 hover:bg-primary/10 cursor-pointer'>Logout</li>
                         </ul>
                     </div>

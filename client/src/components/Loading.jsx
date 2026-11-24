@@ -10,10 +10,12 @@ const Loading = () => {
 
     useEffect(()=>{
         if (nextUrl){
-            setTimeout(()=> {
+            const timer = setTimeout(()=> {
                 navigate(`/${nextUrl}`)
             }, 5000)
+            return () => clearTimeout(timer)
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [nextUrl])
   return (
     <div className='flex justify-center items-center h-screen'>

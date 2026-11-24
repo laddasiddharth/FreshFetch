@@ -38,7 +38,6 @@ const AddAddress = () => {
             ...prevAddress,
             [name]: value,
         }))
-        console.log(address);
     }
 
     const onSubmitHandler = async (e) => {
@@ -62,6 +61,7 @@ const AddAddress = () => {
         if (!user){
             navigate('/cart')
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
   return (

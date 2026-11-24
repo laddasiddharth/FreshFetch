@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { useAppContext } from "../context/AppContext";
 import { Link, useParams } from "react-router-dom";
 import { assets } from "../assets/assets";
@@ -9,22 +9,17 @@ const ProductDetails = () => {
     const {products, navigate, currency, addToCart} = useAppContext()
     const {id} = useParams()
     
-    const [relatedProducts, setRelatedProducts] = useState([]);
-    const [thumbnail, setThumbnail] = useState(null);
+    const [selected, setSelected] = useState({id: null, image: null});
    
     const product = products.find((item) => String(item._id).trim() === String(id).trim());
 
-    useEffect(()=> {
-        if (products.length > 0 && product){
-            let productsCopy = products.slice();
-            productsCopy = productsCopy.filter((item)=> product.category === item.category)
-            setRelatedProducts(productsCopy.slice(0,5))
-        }
+    // other in-stock products from the same category (excluding this one)
+    const relatedProducts = useMemo(()=> {
+        if (!product) return []
+        return products.filter((item)=> item.category === product.category && item._id !== product._id).slice(0,5)
     }, [products, product])
 
-    useEffect(()=> {
-        setThumbnail(product?.image[0] ? product.image[0] : null)
-    }, [product])
+    const thumbnail = product && selected.id === product._id ? selected.image : product?.image?.[0] ?? null
 
     return product && (
         <div className="mt-12">
@@ -39,7 +34,7 @@ const ProductDetails = () => {
                 <div className="flex gap-3">
                     <div className="flex flex-col gap-3">
                         {product.image.map((image, index) => (
-                            <div key={index} onClick={() => setThumbnail(image)} className="border max-w-24 border-gray-500/30 rounded overflow-hidden cursor-pointer" >
+                            <div key={index} onClick={() => setSelected({id: product._id, image})} className="border max-w-24 border-gray-500/30 rounded overflow-hidden cursor-pointer" >
                                 <img src={image} alt={`Thumbnail ${index + 1}`} />
                             </div>
                         ))}
@@ -55,7 +50,7 @@ const ProductDetails = () => {
 
                     <div className="flex items-center gap-0.5 mt-1">
                         {Array(5).fill('').map((_, i) => (
-                            <img src={ i<4 ? assets.star_icon : assets.star_dull_icon} alt="" 
+                            <img key={i} src={ i<4 ? assets.star_icon : assets.star_dull_icon} alt="" 
                             className="md:w-4 w-3.5"/>
                             
                         ))}
@@ -93,7 +88,7 @@ const ProductDetails = () => {
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4
                 gap-3 md:gap-6 lg:grid-cols-5 mt-6 w-full">
-                    {relatedProducts.filter((product)=> product.inStock).map((product, index)=> (<ProductCard key={index} product={product}/>))}
+                    {relatedProducts.filter((item)=> item.inStock).map((item)=> (<ProductCard key={item._id} product={item}/>))}
                 </div>
                 <button onClick={()=> {navigate('/products'); scrollTo(0,0)}} className="mx-auto cursor-pointer px-12 my-16 py-2.5 border
                 rounded text-primary hover:bg-primary/10 transition">See more</button>

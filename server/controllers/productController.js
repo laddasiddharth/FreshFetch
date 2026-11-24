@@ -5,7 +5,10 @@ import Product from "../models/Product.js"
 export const addProduct = async(req, res) => {
     try {
         let productData = JSON.parse(req.body.productData)
-        const images = req.files
+        const images = req.files || []
+        if (images.length === 0) {
+            return res.json({success: false, message: "At least one image is required"})
+        }
 
         let imagesUrl = await Promise.all(
             images.map(async (item) => {
@@ -40,8 +43,11 @@ export const productList = async(req, res) => {
 // Get Single Product: /api/product/id
 export const productById = async(req, res) => {
     try {
-        const { id } = req.body
+        const id = req.query.id || req.body?.id
         const product = await Product.findById(id)
+        if (!product) {
+            return res.json({success: false, message: "Product not found"})
+        }
         res.json({success: true, product})
     } catch (error) {
         console.log(error.message);

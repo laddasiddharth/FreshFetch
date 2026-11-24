@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAppContext } from "../context/AppContext";
-import { assets, dummyAddress } from "../assets/assets";
+import { assets } from "../assets/assets";
 import toast from "react-hot-toast";
 
 const Cart = () => {
@@ -17,8 +17,10 @@ const Cart = () => {
         let tempArray = []
         for (const key in cartItems){
             const product = products.find((item)=>item._id === key)
-            product.quantity = cartItems[key]
-            tempArray.push(product)
+            // skip products that no longer exist, and don't mutate shared product objects
+            if (product && cartItems[key] > 0){
+                tempArray.push({...product, quantity: cartItems[key]})
+            }
         }
         setCartArray(tempArray)
     }
@@ -43,6 +45,9 @@ const Cart = () => {
 
     const placeOrder = async() => {
         try {
+            if (cartArray.length === 0){
+                return toast.error("Your cart is empty")
+            }
             if (!selectedAddress){
                 return toast.error("Please select an address")
             }
@@ -86,12 +91,14 @@ const Cart = () => {
         if (products.length > 0 && cartItems){
             getCart()
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [products, cartItems])
 
     useEffect(()=> {
         if (user){
             getUserAddress()
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user])
 
     return products.length > 0 && cartItems ? (
@@ -131,7 +138,7 @@ const Cart = () => {
                                 </div>
                             </div>
                         </div>
-                        <p className="text-center">{currency}{product.offerPrice * product.quantity}</p>
+                        <p className="text-center">{currency}{Math.round(product.offerPrice * product.quantity * 100) / 100}</p>
                         <button onClick={()=>removeFromCart(product._id)} className="cursor-pointer mx-auto">
                            <img src={assets.remove_icon} alt="remove" className="inline-block w-6 h-6"/>
                         </button>
@@ -152,15 +159,14 @@ const Cart = () => {
                 <div className="mb-6">
                     <p className="text-sm font-medium uppercase">Delivery Address</p>
                     <div className="relative flex justify-between items-start mt-2">
-                        <p className="text-gray-500">{selectedAddress ? `${selectedAddress.street}
-                        , ${selectedAddress.city}, ${selectedAddress.state}, ${selectedAddress.country}` : "No address found"} </p>
+                        <p className="text-gray-500">{selectedAddress ? `${selectedAddress.street}, ${selectedAddress.city}, ${selectedAddress.state}, ${selectedAddress.country}` : "No address found"} </p>
                         <button onClick={() => setShowAddress(!showAddress)} className="text-primary hover:underline cursor-pointer">
                             Change
                         </button>
                         {showAddress && (
                             <div className="absolute top-12 py-1 bg-white border border-gray-300 text-sm w-full">
-                                { addresses.map((address, index)=> (
-                                    <p onClick={() => { setSelectedAddress(address); setShowAddress(false)}} className="text-gray-500 p-2 hover:bg-gray-100">
+                                { addresses.map((address)=> (
+                                    <p key={address._id} onClick={() => { setSelectedAddress(address); setShowAddress(false)}} className="text-gray-500 p-2 hover:bg-gray-100">
                                     {address.street}, {address.city}, {address.state}, {address.country}
                                 </p>))}
                                 <p onClick={() => navigate("/add-address")} className="text-primary text-center cursor-pointer p-2 hover:bg-primary/10">
@@ -188,11 +194,10 @@ const Cart = () => {
                         <span>Shipping Fee</span><span className="text-green-600">Free</span>
                     </p>
                     <p className="flex justify-between">
-                        <span>Tax (2%)</span><span>{currency}{getCartAmount() * 2 / 100}</span>
+                        <span>Tax (2%)</span><span>{currency}{Math.round(getCartAmount() * 2) / 100}</span>
                     </p>
                     <p className="flex justify-between text-lg font-medium mt-3">
-                        <span>Total Amount:</span><span>{currency}{getCartAmount() + 
-                        getCartAmount() * 2 / 100}</span>
+                        <span>Total Amount:</span><span>{currency}{Math.round(getCartAmount() * 102) / 100}</span>
                     </p>
                 </div>
 

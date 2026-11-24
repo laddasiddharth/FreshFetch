@@ -5,7 +5,8 @@ const connectDB = async () => {
         mongoose.connection.on('connected', ()=> console.log("Database connected"));
         await mongoose.connect(`${process.env.MONGODB_URI}/FreshFetch`)
     } catch (error) {
-        console.error(error.message);
+        console.error("Database connection failed:", error.message);
+        process.exit(1);
     }
 }
 

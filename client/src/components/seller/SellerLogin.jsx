@@ -21,7 +21,7 @@ const SellerLogin = () => {
                 toast.error(data.message)
             }
         } catch (error) {
-            toast.error(data.message)
+            toast.error(error.message)
         }
         
     }
@@ -30,6 +30,7 @@ const SellerLogin = () => {
         if (isSeller){
             navigate("/seller")
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isSeller])
 
   return !isSeller && (

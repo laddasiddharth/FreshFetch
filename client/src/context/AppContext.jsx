@@ -1,6 +1,6 @@
-import { createContext, useContext, useEffect, useState, useRef } from "react";
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { dummyProducts } from "../assets/assets";
 import toast from "react-hot-toast";
 import axios from "axios";
 
@@ -18,7 +18,7 @@ export const AppContextProvider = ({children})=>{
     const [showUserLogin, setShowUserLogin] = useState(false)
     const [products, setProducts] = useState([])
     const [cartItems, setCartItems] = useState({})
-    const [searchQuery, setSearchQuery] = useState({})
+    const [searchQuery, setSearchQuery] = useState('')
 
     // Fetch Seller Status
     const fetchSeller = async()=> {
@@ -30,7 +30,7 @@ export const AppContextProvider = ({children})=>{
             else{
                 setIsSeller(false)
             }
-        } catch (error) {
+        } catch {
             setIsSeller(false)
         }
     }
@@ -42,9 +42,10 @@ export const AppContextProvider = ({children})=>{
             const {data} = await axios.get('/api/user/is-auth');
             if (data.success){
                 setUser(data.user)
-                setCartItems(data.user.cartItems)
+                // keep any items added as a guest, on top of the saved cart
+                setCartItems((prev) => ({...(data.user.cartItems || {}), ...prev}))
             }
-        } catch (error) {
+        } catch {
             setUser(null)
         }
     }
@@ -114,14 +115,16 @@ export const AppContextProvider = ({children})=>{
         let totalAmount = 0;
         for (const items in cartItems) {
             let itemInfo = products.find((product) => product._id === items);
-            if (cartItems[items] > 0){
+            if (itemInfo && cartItems[items] > 0){
                 totalAmount += itemInfo.offerPrice * cartItems[items]
             }
         }
-        return Math.floor(totalAmount * 100) / 100;
+        return Math.round(totalAmount * 100) / 100;
     }
 
     useEffect(()=>{
+        // initial data load from the API
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         fetchUser()
         fetchSeller()
         fetchProducts()
@@ -148,7 +151,7 @@ export const AppContextProvider = ({children})=>{
 
     const value = {navigate, user, setUser, setIsSeller, isSeller, showUserLogin, setShowUserLogin, 
         products, currency, addToCart, updateCartItem, removeFromCart, cartItems, setSearchQuery,
-        searchQuery, getCartCount, getCartAmount, axios, fetchProducts, setCartItems
+        searchQuery, getCartCount, getCartAmount, axios, fetchProducts, setCartItems, fetchUser
     }
     return <AppContext.Provider value = {value}>
         {children}
