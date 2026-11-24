@@ -1,0 +1,28 @@
+name: Keep backend alive
+
+# Pings the deployed API on a schedule so free hosts (e.g. Render) don't put it to sleep.
+# Setup: GitHub repo -> Settings -> Secrets and variables -> Actions -> Variables ->
+#   BACKEND_URL = https://<your-backend-host>   (no trailing slash)
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # every 10 minutes (GitHub may delay runs by a few minutes)
+  workflow_dispatch:          # allows a manual run from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping API
+        env:
+          BACKEND_URL: ${{ vars.BACKEND_URL }}
+        run: |
+          if [ -z "$BACKEND_URL" ]; then
+            echo "::warning::BACKEND_URL repository variable is not set; skipping."
+            exit 0
+          fi
+          # retry a few times: a sleeping host can take ~1 minute to wake up
+          curl --fail --silent --show-error --location \
+            --retry 5 --retry-delay 15 --retry-all-errors --max-time 60 \
+            "$BACKEND_URL/" 
+          echo
