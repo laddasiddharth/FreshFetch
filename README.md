@@ -9,18 +9,18 @@ A modern, full-stack e-commerce platform for fresh groceries and produce, built 
 - 🏠 **Home Page** - Browse featured products and categories
 - 🔍 **Product Browsing** - View all products or filter by category
 - 📦 **Product Details** - Detailed product information with images
-- 🛒 **Shopping Cart** - Add, update, and remove items from cart
+- 🛒 **Shopping Cart** - Add, update, and remove items; the cart is saved to your account and synced across devices
 - 💳 **Secure Checkout** - Integrated Stripe payment gateway with COD option
-- 📍 **Address Management** - Save and manage multiple delivery addresses
-- 📋 **Order Tracking** - View order history and status
+- 📍 **Address Management** - Save multiple delivery addresses and pick one at checkout
+- 📋 **Order History** - View past orders with payment type, status and date
 - 🔐 **User Authentication** - Secure login and registration with JWT
 
 ### Seller Features
 
 - 🔑 **Seller Dashboard** - Dedicated admin panel for sellers
-- ➕ **Product Management** - Add, edit, and delete products
-- 📊 **Product List** - View and manage all listed products
-- 📦 **Order Management** - Track and manage customer orders
+- ➕ **Add Products** - Create products with up to 4 images
+- 📊 **Product List** - View all products and toggle in-stock / out-of-stock
+- 📦 **Order Overview** - See all customer orders, delivery address and payment status
 - 🖼️ **Image Upload** - Cloudinary integration for product images
 
 ## 🛠️ Tech Stack
@@ -69,13 +69,15 @@ FreshFetch/
 │   │   ├── App.jsx        # Main app component
 │   │   ├── main.jsx       # Entry point
 │   │   └── index.css      # Global styles
+│   ├── .env.example       # Client environment template
 │   ├── package.json
 │   └── vite.config.js
 │
 ├── server/                # Backend Node.js application
 │   ├── configs/           # Configuration files
 │   │   ├── db.js          # MongoDB connection
-│   │   └── cloudinary.js  # Cloudinary setup
+│   │   ├── cloudinary.js  # Cloudinary setup
+│   │   └── multer.js      # File upload config
 │   ├── controllers/       # Route controllers
 │   ├── middleware/        # Custom middleware
 │   ├── models/            # Mongoose models
@@ -94,6 +96,7 @@ FreshFetch/
 │   ├── package.json
 │   └── server.js          # Entry point
 │
+├── .github/workflows/     # Scheduled keep-alive workflow
 ├── .gitignore
 └── README.md
 ```
@@ -102,7 +105,7 @@ FreshFetch/
 
 ### Prerequisites
 
-- **Node.js** (v16 or higher)
+- **Node.js** v20.19 or higher (required by Vite 7)
 - **MongoDB** (local installation or MongoDB Atlas account)
 - **Cloudinary** account (for image storage)
 - **Stripe** account (for payment processing)
@@ -133,7 +136,7 @@ FreshFetch/
 
 1. **Server Environment Variables**
 
-   Create a `.env` file in the `server` directory based on `.env.example`:
+   Copy `server/.env.example` to `server/.env` and fill it in:
 
    ```env
    # JWT Configuration
@@ -145,6 +148,8 @@ FreshFetch/
    SELLER_PASSWORD=your-password-here
 
    # MongoDB
+   # Base connection string WITHOUT a database name - the app appends "/FreshFetch"
+   # e.g. mongodb+srv://user:pass@cluster.mongodb.net  or  mongodb://localhost:27017
    MONGODB_URI=your-mongodb-connection-string
 
    # Cloudinary
@@ -160,11 +165,20 @@ FreshFetch/
 
 2. **Client Environment Variables**
 
-   Create a `.env` file in the `client` directory:
+   Copy `client/.env.example` to `client/.env`:
 
    ```env
    VITE_BACKEND_URL=http://localhost:4000
-   VITE_STRIPE_PUBLISHABLE_KEY=your-stripe-publishable-key
+   VITE_CURRENCY=$
+   ```
+
+3. **Stripe webhook (only needed to test online payments locally)**
+
+   Orders paid online are marked as paid by a Stripe webhook that posts to `POST /stripe`.
+   Forward events to your local server with the [Stripe CLI](https://stripe.com/docs/stripe-cli) and copy the printed signing secret into `STRIPE_WEBHOOK_SECRET`:
+
+   ```bash
+   stripe listen --forward-to localhost:4000/stripe
    ```
 
 ### Running the Application
@@ -195,51 +209,65 @@ FreshFetch/
 
 ## 📡 API Endpoints
 
+Responses are JSON in the form `{ success, message, ... }`.
+Authentication uses HTTP-only cookies (`token` for users, `sellerToken` for the seller).
+
 ### User Routes (`/api/user`)
 
-- `POST /register` - Register new user
-- `POST /login` - User login
-- `POST /logout` - User logout
-- `GET /profile` - Get user profile
+| Method | Endpoint    | Auth | Description                               |
+| ------ | ----------- | ---- | ----------------------------------------- |
+| POST   | `/register` | -    | Register a new user and log in            |
+| POST   | `/login`    | -    | Log in                                    |
+| GET    | `/is-auth`  | User | Get the logged-in user (incl. saved cart) |
+| GET    | `/logout`   | -    | Log out                                   |
 
 ### Seller Routes (`/api/seller`)
 
-- `POST /login` - Seller login
-- `POST /logout` - Seller logout
+| Method | Endpoint   | Auth   | Description                            |
+| ------ | ---------- | ------ | -------------------------------------- |
+| POST   | `/login`   | -      | Seller login (credentials from `.env`) |
+| GET    | `/is-auth` | Seller | Check seller session                   |
+| GET    | `/logout`  | -      | Seller logout                          |
 
 ### Product Routes (`/api/product`)
 
-- `GET /` - Get all products
-- `GET /:id` - Get product by ID
-- `GET /category/:category` - Get products by category
-- `POST /add` - Add new product (seller only)
-- `PUT /:id` - Update product (seller only)
-- `DELETE /:id` - Delete product (seller only)
+| Method | Endpoint | Auth   | Description                                                     |
+| ------ | -------- | ------ | --------------------------------------------------------------- |
+| GET    | `/list`  | -      | Get all products                                                |
+| GET    | `/id`    | -      | Get one product (`?id=<productId>`)                             |
+| POST   | `/add`   | Seller | Add a product (`multipart/form-data`: `productData` + `images`) |
+| POST   | `/stock` | Seller | Update stock status (`{ id, inStock }`)                         |
 
 ### Cart Routes (`/api/cart`)
 
-- `GET /` - Get user cart
-- `POST /add` - Add item to cart
-- `PUT /update` - Update cart item
-- `DELETE /remove` - Remove item from cart
+| Method | Endpoint  | Auth | Description                     |
+| ------ | --------- | ---- | ------------------------------- |
+| POST   | `/update` | User | Save the cart (`{ cartItems }`) |
 
 ### Address Routes (`/api/address`)
 
-- `GET /` - Get user addresses
-- `POST /add` - Add new address
-- `PUT /:id` - Update address
-- `DELETE /:id` - Delete address
+| Method | Endpoint | Auth | Description                    |
+| ------ | -------- | ---- | ------------------------------ |
+| POST   | `/add`   | User | Add a delivery address         |
+| GET    | `/get`   | User | Get the user's saved addresses |
 
 ### Order Routes (`/api/order`)
 
-- `GET /` - Get user orders
-- `POST /create` - Create new order
-- `GET /seller` - Get all orders (seller only)
-- `PUT /:id/status` - Update order status (seller only)
+| Method | Endpoint  | Auth   | Description                                          |
+| ------ | --------- | ------ | ---------------------------------------------------- |
+| POST   | `/cod`    | User   | Place a Cash on Delivery order                       |
+| POST   | `/stripe` | User   | Place an online order; returns a Stripe Checkout URL |
+| GET    | `/user`   | User   | Get the user's orders                                |
+| GET    | `/seller` | Seller | Get all orders                                       |
 
-### Webhook Routes
+### Other
 
-- `POST /stripe` - Stripe webhook for payment confirmation
+- `GET /` - Health check (returns "API is working")
+- `POST /stripe` - Stripe webhook; marks online orders as paid and clears the cart
+
+### Pricing
+
+Prices are always calculated on the server from the database (never trusted from the client). A **2% tax** is added to the item total.
 
 ## 🔒 Security Features
 
@@ -248,7 +276,8 @@ FreshFetch/
 - **CORS Protection** - Configured allowed origins
 - **Environment Variables** - Sensitive data stored in .env files
 - **Cookie Security** - HTTP-only cookies for auth tokens
-- **Input Validation** - Server-side validation for all inputs
+- **Server-side Pricing** - Order totals are computed from database prices, with quantity and stock validation
+- **Protected Routes** - User and seller routes are guarded by auth middleware (seller auth runs before file uploads)
 
 ## 🎨 UI/UX Features
 
@@ -262,20 +291,31 @@ FreshFetch/
 
 ### Frontend (Vercel)
 
-The client is configured for deployment on Vercel:
-
-- Allowed origins include: `https://freshfetch-ten.vercel.app` and `https://fresh-fetch.vercel.app`
+Deploy the `client` folder on Vercel (`client/vercel.json` rewrites all routes to `index.html` so deep links like `/cart` and the Stripe return URL work) and set `VITE_BACKEND_URL` and `VITE_CURRENCY` in the project's environment variables.
 
 ### Backend
 
-The server can be deployed on platforms like:
+The backend is deployed on Vercel (`freshfetch-backend.vercel.app`); it can also run on Render, Railway, Heroku or DigitalOcean.
+Set all variables from `server/.env.example`, with `NODE_ENV=production` (this enables `secure`, `sameSite=none` cookies for cross-site use).
 
-- Heroku
-- Railway
-- Render
-- DigitalOcean
+**Important**:
 
-**Important**: Update the `allowedOrigins` array in `server/server.js` with your production frontend URL.
+- Add your production frontend URL to the `allowedOrigins` array in `server/server.js` (currently `localhost:5173`, `freshfetch-ten.vercel.app` and `fresh-fetch.vercel.app`).
+- In the Stripe dashboard, create a webhook pointing to `https://<your-backend>/stripe` for the `payment_intent.succeeded` and `payment_intent.payment_failed` events, and set its signing secret as `STRIPE_WEBHOOK_SECRET`.
+
+### Keeping the backend awake
+
+Serverless and free hosting tiers can cold-start or sleep when idle. The GitHub Actions workflow
+[`.github/workflows/keep-alive.yml`](.github/workflows/keep-alive.yml) pings the API every 10 minutes.
+To enable it, add a repository **variable** named `BACKEND_URL` (Settings → Secrets and variables → Actions → Variables) with your backend URL, e.g. `https://freshfetch-backend.vercel.app`.
+
+## 🧪 Linting & Build
+
+```bash
+cd client
+npm run lint     # ESLint
+npm run build    # Production build to client/dist
+```
 
 ## 🤝 Contributing
 
